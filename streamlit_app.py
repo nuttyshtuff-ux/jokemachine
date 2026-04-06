@@ -3,7 +3,7 @@ import google.generativeai as genai
 
 st.set_page_config(page_title="The Joke Writer", page_icon="📝", layout="wide")
 
-# 1. CSS
+# 1. CSS - Navy & Yellow
 st.markdown("""<style>
     .main-title { color: #1e3a8a; font-weight: 800; text-align: center; border: 3px solid #1e3a8a; padding: 20px; border-radius: 20px; background-color: #f8fbff; margin-bottom: 30px; }
     .header-support { display: inline-block; margin-top: 15px; background-color: #facc15; color: #1e3a8a !important; padding: 8px 20px; border-radius: 10px; font-weight: bold; text-decoration: none; border: 2px solid #1e3a8a; font-size: 14px; }
@@ -13,14 +13,15 @@ st.markdown("""<style>
     .response-card { background-color: #eff6ff; border-left: 8px solid #facc15; padding: 20px; border-radius: 10px; color: #1e3a8a; white-space: pre-wrap; }
 </style>""", unsafe_allow_html=True)
 
-# 2. API SETUP - THE STABLE WAY
+# 2. API SETUP
 api_key = st.secrets.get("api_key")
 if not api_key:
     st.error("Missing API Key!"); st.stop()
 
+# Straight configuration - no extra parameters
 genai.configure(api_key=api_key)
 
-STYLES = ["Pun", "Riddle", "Observational", "Insult", "Self-Deprecating", "Weird/Offbeat", "Urban/HipHop", "Latino", "Anecdote"]
+STYLES = ["Pun", "Riddle", "Observational", "Insult", "Self-Deprecating", "Weird", "Urban", "Latino", "Anecdote"]
 RATING_OPTIONS = {1: "G", 2: "PG", 3: "PG-13", 4: "R"}
 
 # 3. SIDEBAR
@@ -39,27 +40,21 @@ paypal_url = "https://www.paypal.me/YOUR_USERNAME"
 st.markdown(f"<div class='main-title'><h1>📝 THE JOKE WRITER</h1><a href='{paypal_url}' target='_blank' class='header-support'>💰 Support the Comic</a></div>", unsafe_allow_html=True)
 subject = st.text_area("Topic/Joke:", height=250)
 
-# 5. RUN LOGIC - THE STABLE SYNTAX
+# 5. RUN LOGIC
 if st.button("🚀 WRITE JOKES", use_container_width=True):
     if subject:
         prompt = f"Professional Comedy Writer. Rating: {RATING_OPTIONS[v_score]}. Count: {num_jokes}. Styles: {', '.join(sel_s)}. Subject: {subject}."
         
-        # Try the most bulletproof name in the legacy library
+        # We try ONLY the most standard model first
         try:
             with st.spinner("Brainstorming..."):
+                # Using 1.5-flash which is the universal standard for 2026
                 model = genai.GenerativeModel('gemini-1.5-flash')
                 response = model.generate_content(prompt)
                 st.session_state["last_res"] = f"--- JOKES ---\n\n{response.text}"
                 st.rerun()
         except Exception as e:
-            # Final Fallback to Pro if Flash fails
-            try:
-                model = genai.GenerativeModel('gemini-pro')
-                response = model.generate_content(prompt)
-                st.session_state["last_res"] = f"--- JOKES ---\n\n{response.text}"
-                st.rerun()
-            except Exception as e2:
-                st.error(f"🚨 FINAL ERROR: {e2}")
+            st.error(f"🚨 GOOGLE ERROR: {e}")
     else:
         st.warning("Enter a topic!")
 
