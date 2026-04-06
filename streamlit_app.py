@@ -37,7 +37,7 @@ with st.sidebar:
     sel_rating = st.select_slider("Content Rating", options=[1, 2, 3, 4], value=2, format_func=lambda x: rating_map[x])
     
     st.subheader("Joke Styles")
-    styles = ["Pun", "Riddle", "Observational", "Insult", "Self-Deprecating", "Weird/Offbeat", "Urban/HipHop", "Latino", "Anecdote"]
+    styles = ["Pun", "Riddle", "Observational", "One-Liner", "Insult", "Self-Deprecating", "Weird/Offbeat", "Urban/HipHop", "Latino", "Anecdote"]
     sel_styles = [s for s in styles if st.checkbox(s, key=f"s_{s}")]
     
     st.subheader("Mode")
