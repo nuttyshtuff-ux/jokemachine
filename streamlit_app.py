@@ -16,7 +16,6 @@ st.markdown("""<style>
         color: #1e3a8a !important; padding: 8px 20px; border-radius: 10px;
         font-weight: bold; text-decoration: none; border: 2px solid #1e3a8a; font-size: 14px;
     }
-    .header-support:hover { background-color: #fde047; text-decoration: none; }
     .stButton button { background-color: #facc15 !important; color: #1e3a8a !important; border: 2px solid #1e3a8a !important; font-weight: bold !important; border-radius: 12px !important; }
     [data-testid="stSidebar"] { background-color: #1e3a8a; }
     [data-testid="stSidebar"] * { color: #fef08a !important; }
@@ -26,7 +25,7 @@ st.markdown("""<style>
 # 2. DATA & API
 api_key = st.secrets.get("api_key")
 if not api_key:
-    st.error("Missing API Key!"); st.stop()
+    st.error("Missing API Key in Secrets!"); st.stop()
 client = genai.Client(api_key=api_key)
 
 STYLES = ["Pun", "Riddle", "Observational", "Insult", "Self-Deprecating", "Weird/Offbeat", "Urban/HipHop", "Latino", "Anecdote"]
@@ -35,66 +34,46 @@ RATING_OPTIONS = {1: "G", 2: "PG", 3: "PG-13", 4: "R"}
 # 3. SIDEBAR
 with st.sidebar:
     st.header("📝 WRITER CONTROLS")
-    st.success("✅ GUEST ACCESS ACTIVE")
-    
-    # Fixed Slider Logic
-    v_score = st.select_slider(
-        "Content Rating", 
-        options=[1, 2, 3, 4], 
-        value=2, 
-        format_func=lambda x: RATING_OPTIONS.get(x)
-    )
-    
-    st.subheader("Joke Styles")
+    v_score = st.select_slider("Rating", options=[1, 2, 3, 4], value=2, format_func=lambda x: RATING_OPTIONS.get(x))
     sel_s = [s for s in STYLES if st.checkbox(s, key=f"s_{s}")]
-    
-    st.subheader("Options")
-    num_jokes = st.number_input("Number of Jokes", min_value=1, max_value=10, value=3)
-    ex = st.checkbox("Extend this Joke")
-    
+    num_jokes = st.number_input("How many?", min_value=1, max_value=10, value=3)
+    ex = st.checkbox("Extend Joke")
     st.markdown("---")
     if "last_res" in st.session_state:
-        st.download_button("💾 DOWNLOAD JOKES", st.session_state["last_res"], "jokes.txt", use_container_width=True)
+        st.download_button("💾 DOWNLOAD", st.session_state["last_res"], "jokes.txt", use_container_width=True)
 
 # 4. MAIN UI
 paypal_url = "https://www.paypal.me/YOUR_USERNAME" 
-st.markdown(f"""
-    <div class='main-title'>
-        <h1>📝 THE JOKE WRITER</h1>
-        <a href="{paypal_url}" target="_blank" class="header-support">💰 Support the Comic</a>
-    </div>
-""", unsafe_allow_html=True)
+st.markdown(f"<div class='main-title'><h1>📝 THE JOKE WRITER</h1><a href='{paypal_url}' target='_blank' class='header-support'>💰 Support the Comic</a></div>", unsafe_allow_html=True)
+subject = st.text_area("Topic/Joke:", height=250)
 
-subject = st.text_area("Your Subject or Existing Joke:", height=250, placeholder="Enter a topic...")
-
-# 5. RUN LOGIC
+# 5. RUN LOGIC (The Debugger)
 if st.button("🚀 WRITE JOKES", use_container_width=True):
     if subject:
-        rating_text = RATING_OPTIONS[v_score]
-        p = f"Act as a professional comedy writer. Rating: {rating_text}. Generate {num_jokes} jokes. "
-        if sel_s: p += f"Styles: {', '.join(sel_s)}. "
-        p += f"Subject: {subject}. "
-        if ex: p += "Input is a joke; write tags/punchlines. "
-        p += "Label each joke style."
-
-        cfg = types.GenerateContentConfig(temperature=0.8, max_output_tokens=2000)
-        m_list = ["gemini-2.0-flash", "gemini-1.5-flash", "gemini-1.5-pro"]
+        p = f"Professional Comedy Writer. Rating: {RATING_OPTIONS[v_score]}. Count: {num_jokes}. Styles: {', '.join(sel_s)}. Subject: {subject}."
         
+        # We try the two most robust models
+        m_list = ["gemini-2.0-flash", "gemini-1.5-flash"]
+        
+        last_error = "No models attempted"
         success = False
+        
         for m_name in m_list:
             if not success:
                 try:
-                    with st.spinner(f"Brainstorming..."):
-                        res = client.models.generate_content(model=m_name, contents=p, config=cfg)
+                    with st.spinner(f"Trying {m_name}..."):
+                        res = client.models.generate_content(model=m_name, contents=p)
                         st.session_state["last_res"] = f"--- JOKES ---\n\n{res.text}"
                         success = True
                         st.rerun()
-                except Exception:
+                except Exception as e:
+                    last_error = str(e)
                     continue
+        
         if not success:
-            st.error("Writers' Room is full. Try again in a minute.")
+            st.error(f"🚨 BRAINSTORM FAILED. Raw Error: {last_error}")
     else:
-        st.warning("Please provide a subject!")
+        st.warning("Enter a topic!")
 
 # 6. DISPLAY
 if "last_res" in st.session_state:
