@@ -1,10 +1,9 @@
 import streamlit as st
-from google import genai
-from google.genai import types
+import google.generativeai as genai
 
 st.set_page_config(page_title="The Joke Writer", page_icon="📝", layout="wide")
 
-# 1. CSS - Navy & Yellow
+# 1. CSS
 st.markdown("""<style>
     .main-title { color: #1e3a8a; font-weight: 800; text-align: center; border: 3px solid #1e3a8a; padding: 20px; border-radius: 20px; background-color: #f8fbff; margin-bottom: 30px; }
     .header-support { display: inline-block; margin-top: 15px; background-color: #facc15; color: #1e3a8a !important; padding: 8px 20px; border-radius: 10px; font-weight: bold; text-decoration: none; border: 2px solid #1e3a8a; font-size: 14px; }
@@ -14,13 +13,12 @@ st.markdown("""<style>
     .response-card { background-color: #eff6ff; border-left: 8px solid #facc15; padding: 20px; border-radius: 10px; color: #1e3a8a; white-space: pre-wrap; }
 </style>""", unsafe_allow_html=True)
 
-# 2. API SETUP - FORCING PRODUCTION 'V1'
+# 2. API SETUP - THE STABLE WAY
 api_key = st.secrets.get("api_key")
 if not api_key:
     st.error("Missing API Key!"); st.stop()
 
-# This is the "Bunker-Buster" fix: Force the API to 'v1' to avoid the v1beta 404s
-client = genai.Client(api_key=api_key, http_options={'api_version': 'v1'})
+genai.configure(api_key=api_key)
 
 STYLES = ["Pun", "Riddle", "Observational", "Insult", "Self-Deprecating", "Weird/Offbeat", "Urban/HipHop", "Latino", "Anecdote"]
 RATING_OPTIONS = {1: "G", 2: "PG", 3: "PG-13", 4: "R"}
@@ -41,31 +39,27 @@ paypal_url = "https://www.paypal.me/YOUR_USERNAME"
 st.markdown(f"<div class='main-title'><h1>📝 THE JOKE WRITER</h1><a href='{paypal_url}' target='_blank' class='header-support'>💰 Support the Comic</a></div>", unsafe_allow_html=True)
 subject = st.text_area("Topic/Joke:", height=250)
 
-# 5. RUN LOGIC - THE "WORKING" LOOP
+# 5. RUN LOGIC - THE STABLE SYNTAX
 if st.button("🚀 WRITE JOKES", use_container_width=True):
     if subject:
-        p = f"Professional Comedy Writer. Rating: {RATING_OPTIONS[v_score]}. Count: {num_jokes}. Styles: {', '.join(sel_s)}. Subject: {subject}."
+        prompt = f"Professional Comedy Writer. Rating: {RATING_OPTIONS[v_score]}. Count: {num_jokes}. Styles: {', '.join(sel_s)}. Subject: {subject}."
         
-        # We use the most standard production model names
-        m_list = ["gemini-1.5-flash", "gemini-1.5-pro"]
-        
-        last_err = "No attempts yet."
-        success = False
-        for m_name in m_list:
-            if not success:
-                try:
-                    with st.spinner(f"Trying {m_name}..."):
-                        # Use the specific model directly
-                        res = client.models.generate_content(model=m_name, contents=p)
-                        st.session_state["last_res"] = f"--- JOKES ---\n\n{res.text}"
-                        success = True
-                        st.rerun()
-                except Exception as e:
-                    last_err = str(e)
-                    continue
-        
-        if not success:
-            st.error(f"🚨 SYSTEM OVERLOAD. Error: {last_err}")
+        # Try the most bulletproof name in the legacy library
+        try:
+            with st.spinner("Brainstorming..."):
+                model = genai.GenerativeModel('gemini-1.5-flash')
+                response = model.generate_content(prompt)
+                st.session_state["last_res"] = f"--- JOKES ---\n\n{response.text}"
+                st.rerun()
+        except Exception as e:
+            # Final Fallback to Pro if Flash fails
+            try:
+                model = genai.GenerativeModel('gemini-pro')
+                response = model.generate_content(prompt)
+                st.session_state["last_res"] = f"--- JOKES ---\n\n{response.text}"
+                st.rerun()
+            except Exception as e2:
+                st.error(f"🚨 FINAL ERROR: {e2}")
     else:
         st.warning("Enter a topic!")
 
