@@ -1,10 +1,9 @@
 import streamlit as st
-from google import genai
-from google.genai import types
+import google.generativeai as genai
 
 st.set_page_config(page_title="The Joke Writer", page_icon="📝", layout="wide")
 
-# 1. CSS - Consistent Navy & Yellow Aesthetic
+# 1. CSS - Navy & Yellow Aesthetic
 st.markdown("""<style>
     .main-title { 
         color: #1e3a8a; font-weight: 800; text-align: center; 
@@ -22,27 +21,24 @@ st.markdown("""<style>
     .joke-card { background-color: #f8fbff; border-left: 8px solid #facc15; padding: 20px; border-radius: 10px; color: #1e3a8a; margin-bottom: 15px; border: 1px solid #1e3a8a; }
 </style>""", unsafe_allow_html=True)
 
-# 2. API SETUP
+# 2. API SETUP (Corrected for google-generativeai)
 api_key = st.secrets.get("api_key")
 if not api_key:
     st.error("Missing API Key in Secrets!"); st.stop()
-client = genai.Client(api_key=api_key)
+genai.configure(api_key=api_key)
 
 # 3. SIDEBAR CONTROLS
 with st.sidebar:
     st.header("⚙️ WRITER SETTINGS")
-    
-    # Rating Slider
-    rating_map = {1: "G (Clean/Family)", 2: "PG (Mild)", 3: "PG-13 (Edgy)", 4: "R (Raw/Adult)"}
+    rating_map = {1: "G (Clean)", 2: "PG (Mild)", 3: "PG-13 (Edgy)", 4: "R (Adult)"}
     sel_rating = st.select_slider("Content Rating", options=[1, 2, 3, 4], value=2, format_func=lambda x: rating_map[x])
     
     st.subheader("Joke Styles")
-    styles = ["Pun", "Riddle", "Observational", "One-Liner", "Insult", "Self-Deprecating", "Weird/Offbeat", "Urban/HipHop", "Latino", "Anecdote"]
+    styles = ["Pun", "Riddle", "Observational", "Insult", "Self-Deprecating", "Weird/Offbeat", "Urban/HipHop", "Latino", "Anecdote"]
     sel_styles = [s for s in styles if st.checkbox(s, key=f"s_{s}")]
     
     st.subheader("Mode")
-    extend_mode = st.checkbox("Extend this Joke", help="Check this if you are pasting an existing joke to get related material.")
-    
+    extend_mode = st.checkbox("Extend this Joke")
     num_jokes = st.number_input("Number of Suggestions", min_value=1, max_value=10, value=3)
     
     st.markdown("---")
@@ -58,31 +54,26 @@ st.markdown(f"""
     </div>
 """, unsafe_allow_html=True)
 
-subject = st.text_area("Input Subject or Existing Joke:", height=200, placeholder="e.g., '7th graders', 'coffee', or paste a joke to extend it...")
+subject = st.text_area("Input Subject or Existing Joke:", height=200, placeholder="Enter a topic or paste a joke...")
 
-# 5. GENERATION LOGIC
+# 5. GENERATION LOGIC (Corrected Syntax)
 if st.button("✨ WRITE JOKES", use_container_width=True):
     if not subject:
-        st.warning("Please enter a subject or joke!")
-    elif not sel_styles and not extend_mode:
-        st.warning("Please select at least one style!")
+        st.warning("Please enter a subject!")
     else:
-        # Prompt Engineering
-        mode_text = "EXTEND" if extend_mode else "CREATE"
         rating_text = rating_map[sel_rating]
         style_list = ", ".join(sel_styles)
         
-        prompt = f"Act as a professional comedy writer. Mode: {mode_text}. Rating: {rating_text}. "
-        prompt += f"Styles requested: {style_list}. Subject/Input: {subject}. "
-        prompt += f"Generate exactly {num_jokes} jokes. Format each joke clearly with a 'Style' label."
-        
+        prompt = f"Act as a professional comedy writer. Rating: {rating_text}. Styles: {style_list}. Subject: {subject}. Generate {num_jokes} jokes."
         if extend_mode:
-            prompt += " Look at the provided joke and write related tags, alternative punchlines, or 'next-step' jokes in the requested styles."
+            prompt += " Take the input as a setup and write tags or alternative punchlines."
 
         try:
-            with st.spinner("Brainstorming in the Writers' Room..."):
-                res = client.models.generate_content(model="gemini-1.5-flash", contents=prompt)
-                st.session_state["joke_output"] = res.text
+            with st.spinner("Writing..."):
+                # Using the 'gemini-1.5-flash' name with the correct library call
+                model = genai.GenerativeModel('gemini-1.5-flash')
+                response = model.generate_content(prompt)
+                st.session_state["joke_output"] = response.text
                 st.rerun()
         except Exception as e:
             st.error(f"Error: {e}")
@@ -90,5 +81,4 @@ if st.button("✨ WRITE JOKES", use_container_width=True):
 # 6. DISPLAY RESULTS
 if "joke_output" in st.session_state:
     st.markdown("### 🎙️ The Writers' Room Suggests:")
-    jokes = st.session_state["joke_output"]
-    st.markdown(f"<div class='joke-card'>{jokes}</div>", unsafe_allow_html=True)
+    st.markdown(f"<div class='joke-card'>{st.session_state['joke_output']}</div>", unsafe_allow_html=True)
