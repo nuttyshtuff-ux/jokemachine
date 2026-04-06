@@ -81,7 +81,7 @@ if st.button("✨ WRITE JOKES", use_container_width=True):
 
         try:
             with st.spinner("Brainstorming in the Writers' Room..."):
-                res = client.models.generate_content(model="gemini-3.1-flash", contents=prompt)
+                res = client.models.generate_content(model="gemini-1.5-flash", contents=prompt)
                 st.session_state["joke_output"] = res.text
                 st.rerun()
         except Exception as e:
