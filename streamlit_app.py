@@ -14,12 +14,12 @@ st.markdown("""<style>
     .response-card { background-color: #eff6ff; border-left: 8px solid #facc15; padding: 20px; border-radius: 10px; color: #1e3a8a; white-space: pre-wrap; }
 </style>""", unsafe_allow_html=True)
 
-# 2. API SETUP - CLEAN & STANDARD
+# 2. API SETUP
 api_key = st.secrets.get("api_key")
 if not api_key:
     st.error("Missing API Key!"); st.stop()
 
-# No more 'v1' or 'v1beta' forcing - let the SDK decide
+# Basic client setup - let the SDK handle the connection
 client = genai.Client(api_key=api_key)
 
 STYLES = ["Pun", "Riddle", "Observational", "Insult", "Self-Deprecating", "Weird/Offbeat", "Urban/HipHop", "Latino", "Anecdote"]
@@ -30,7 +30,7 @@ with st.sidebar:
     st.header("📝 WRITER CONTROLS")
     v_score = st.select_slider("Rating", options=[1, 2, 3, 4], value=2, format_func=lambda x: RATING_OPTIONS.get(x))
     sel_s = [s for s in STYLES if st.checkbox(s, key=f"s_{s}")]
-    num_jokes = st.number_input("Count", min_value=1, max_value=10, value=3)
+    num_jokes = st.number_input("How many?", min_value=1, max_value=10, value=3)
     ex = st.checkbox("Extend Joke")
     st.markdown("---")
     if "last_res" in st.session_state:
@@ -41,13 +41,13 @@ paypal_url = "https://www.paypal.me/YOUR_USERNAME"
 st.markdown(f"<div class='main-title'><h1>📝 THE JOKE WRITER</h1><a href='{paypal_url}' target='_blank' class='header-support'>💰 Support the Comic</a></div>", unsafe_allow_html=True)
 subject = st.text_area("Topic/Joke:", height=250)
 
-# 5. RUN LOGIC - THE UNIVERSAL NAMES
+# 5. RUN LOGIC - USING THE "LATEST" ALIAS
 if st.button("🚀 WRITE JOKES", use_container_width=True):
     if subject:
         p = f"Professional Comedy Writer. Rating: {RATING_OPTIONS[v_score]}. Count: {num_jokes}. Styles: {', '.join(sel_s)}. Subject: {subject}."
         
-        # We are using the "Literal" strings that the SDK expects
-        m_list = ["gemini-1.5-flash", "gemini-1.5-pro"]
+        # We try the most basic names possible
+        m_list = ["gemini-1.5-flash-latest", "gemini-1.5-pro-latest"]
         
         last_error = "Init"
         success = False
@@ -55,7 +55,6 @@ if st.button("🚀 WRITE JOKES", use_container_width=True):
             if not success:
                 try:
                     with st.spinner(f"Trying {m_name}..."):
-                        # Corrected call for the google-genai library
                         res = client.models.generate_content(model=m_name, contents=p)
                         st.session_state["last_res"] = f"--- JOKES ---\n\n{res.text}"
                         success = True
